@@ -37,7 +37,7 @@ LAMBDA: float = 1.5
 # 停止基準
 CRITERION: float = 0.0001
 
-# 最大反復階数
+# 最大反復回数
 MAX_ITER: float = 2000
 
 # 格子点間隔
@@ -328,7 +328,7 @@ def wrapper_gauss_seidel(temp, grid) -> tuple:
 
 def value_temp(temp, i_x: int, i_y: int) -> float:
     """
-    Gauss-Seidel 法の計算に使う格子点が境界上の点を含むかどうかをチェックする関数
+    Neumann 境界条件のときに Gauss-Seidel 法の計算に使う格子点が, 境界外の点を含むかどうかをチェックする関数
 
     Parameters
     -----
