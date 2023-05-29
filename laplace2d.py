@@ -18,39 +18,42 @@ Notes
 import logging
 import math
 from time import perf_counter
+from typing import Final
 
 import matplotlib.pyplot as plt
 import numpy as np
+from numba import njit
 
 # ========== パラメータ ==========
 # 境界条件
 # D: Dirichlet 境界条件 (T)
 # N: Neumann 境界条件 (dT/dx or dT/dy)
-T_TOP: tuple[float, str] = (100, 'D')
-T_RIGHT: tuple[float, str] = (50, 'D')
-T_BOTTOM: tuple[float, str] = (0, 'N')
-T_LEFT: tuple[float, str] = (75, 'D')
+T_TOP: Final[tuple[float, str]] = (100, 'D')
+T_RIGHT: Final[tuple[float, str]] = (50, 'D')
+T_BOTTOM: Final[tuple[float, str]] = (0, 'N')
+T_LEFT: Final[tuple[float, str]] = (75, 'D')
 
 # 加速パラメータ
-LAMBDA: float = 1.5
+LAMBDA: Final[float] = 1.5
 
 # 停止基準
-CRITERION: float = 0.0001
+CRITERION: Final[float] = 0.0001
 
 # 最大反復回数
-MAX_ITER: float = 2000
+MAX_ITER: Final[float] = 2000
 
 # 格子点間隔
-DELTA_X: float = 0.01
-DELTA_Y: float = 0.01
+DELTA_X: Final[float] = 0.01
+DELTA_Y: Final[float] = 0.01
 
 # 境界の座標
-TOP: float = 1
-RIGHT: float = 1
-BOTTOM: float = 0
-LEFT: float = 0
+TOP: Final[float] = 1
+RIGHT: Final[float] = 1
+BOTTOM: Final[float] = 0
+LEFT: Final[float] = 0
 
 
+@njit
 def heat_source(pos_x: float, pos_y: float) -> float:
     """
     熱源を指定する関数
@@ -75,17 +78,17 @@ def heat_source(pos_x: float, pos_y: float) -> float:
 # ========== パラメータ [ここまで] ==========
 
 
-NUM_GRID_X: int = int((RIGHT-LEFT)/DELTA_X) - 1
-NUM_GRID_Y: int = int((TOP-BOTTOM)/DELTA_Y) - 1
+NUM_GRID_X: Final[int] = int((RIGHT-LEFT)/DELTA_X) - 1
+NUM_GRID_Y: Final[int] = int((TOP-BOTTOM)/DELTA_Y) - 1
 
-NUM_COL: int = NUM_GRID_X + 2
-NUM_ROW: int = NUM_GRID_Y + 2
+NUM_COL: Final[int] = NUM_GRID_X + 2
+NUM_ROW: Final[int] = NUM_GRID_Y + 2
 
-LIN_X: np.ndarray = np.linspace(LEFT, RIGHT, NUM_COL)
-LIN_Y: np.ndarray = np.linspace(BOTTOM, TOP, NUM_ROW)
+LIN_X: Final[np.ndarray] = np.linspace(LEFT, RIGHT, NUM_COL)
+LIN_Y: Final[np.ndarray] = np.linspace(BOTTOM, TOP, NUM_ROW)
 
-GRID_X: np.ndarray
-GRID_Y: np.ndarray
+GRID_X: Final[np.ndarray]
+GRID_Y: Final[np.ndarray]
 GRID_X, GRID_Y = np.meshgrid(LIN_X, LIN_Y)
 
 
@@ -154,9 +157,9 @@ def init_temp() -> tuple[np.ndarray, np.ndarray]:
 
     Returns
     -----
-    temp : np.ndarray
+    temp : ndarray
         格子点の温度を保存しておく配列
-    grid : np.ndarray
+    grid : ndarray
         計算する格子点の位置を保存しておく配列
 
     """
@@ -255,14 +258,14 @@ def main_loop(temp, grid):
 
     Parameters
     -----
-    temp : np.ndarray
+    temp : ndarray
         格子点の温度 (初期値) を保存しておく配列
-    grid : np.ndarray
+    grid : ndarray
         計算する格子点の位置を保存しておく配列
 
     Returns
     -----
-    temp : np.ndarray
+    temp : ndarray
         格子点の温度 (収束した値) を保存しておく配列
 
     """
@@ -290,14 +293,14 @@ def wrapper_gauss_seidel(temp: np.ndarray, grid: np.ndarray) \
 
     Parameters
     -----
-    temp : np.ndarray
+    temp : ndarray
         格子点の温度を保存しておく配列
-    grid : np.ndarray
+    grid : ndarray
         計算する格子点の位置を保存しておく配列
 
     Returns
     -----
-    temp : np.ndarray
+    temp : ndarray
         格子点の温度を保存しておく配列
     stop : bool
         停止基準を満たすかどうかのブール値
@@ -341,13 +344,14 @@ def wrapper_gauss_seidel(temp: np.ndarray, grid: np.ndarray) \
 #
 
 
+@njit
 def value_temp(temp: np.ndarray, i_x: int, i_y: int) -> float:
     """
     Neumann 境界条件のときに Gauss-Seidel 法の計算に使う格子点が, 境界外の点を含むかどうかをチェックする
 
     Parameters
     -----
-    temp : np.ndarray
+    temp : ndarray
         格子点の温度を保存しておく配列
     i_x : int
         確認を行う格子点の番号 (x)
@@ -356,7 +360,7 @@ def value_temp(temp: np.ndarray, i_x: int, i_y: int) -> float:
 
     Returns
     -----
-    t_value : np.ndarray
+    t_value : ndarray
         確認を行なった格子点での温度
 
     """
@@ -379,6 +383,7 @@ def value_temp(temp: np.ndarray, i_x: int, i_y: int) -> float:
 #
 
 
+@njit
 def gauss_seidel(
         t_up: float, t_right: float, t_down: float, t_left: float) \
         -> float:
@@ -413,6 +418,7 @@ def gauss_seidel(
 #
 
 
+@njit
 def value_src(i_x: int, i_y: int) -> float:
     """
     格子点の熱源を計算する関数
@@ -442,6 +448,7 @@ def value_src(i_x: int, i_y: int) -> float:
 #
 
 
+@njit
 def overrelaxation(t_old: float, t_new: float) -> float:
     """
     加速緩和を行う
@@ -517,9 +524,6 @@ if __name__ == '__main__':
     grid_points: np.ndarray
     temperature, grid_points = init_temp()
     temperature = main_loop(temperature, grid_points)
-
-    np.set_printoptions(precision=5)
-    print(temperature)
 
     figure = plot_temp(temperature)
 
