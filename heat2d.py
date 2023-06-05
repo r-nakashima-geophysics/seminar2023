@@ -10,15 +10,13 @@ Notes
 
 """
 
-
-import copy
 import math
 from time import perf_counter
 from typing import Final
 
-import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import animation
 from numba import njit
 from scipy.linalg import solve_banded
 
@@ -36,12 +34,12 @@ T_INIT: Final[float] = 0
 KAPPA: Final[float] = 0.835
 
 # 時間ステップ
-DELTA_TIME: Final[float] = 1
+DELTA_TIME: Final[float] = 0.25
 END_TIME: Final[float] = 300
 
 # 格子点間隔
-DELTA_X: Final[float] = 2
-DELTA_Y: Final[float] = 2
+DELTA_X: Final[float] = 1
+DELTA_Y: Final[float] = 1
 
 # 境界の座標
 TOP: Final[float] = 40
@@ -89,7 +87,7 @@ def make_animation(fig_bundle: tuple, contf):
 
     """
 
-    fig, axis, frames = fig_bundle
+    figure, axis, frames = fig_bundle
 
     axis.set_xlim(LEFT, RIGHT)
     axis.set_ylim(BOTTOM, TOP)
@@ -102,17 +100,17 @@ def make_animation(fig_bundle: tuple, contf):
 
     axis.set_aspect('equal')
 
-    fig.tight_layout()
+    figure.tight_layout()
 
-    fig.subplots_adjust(right=0.91, wspace=0.25)
+    figure.subplots_adjust(right=0.91, wspace=0.25)
     axpos = axis.get_position()
-    cbar_ax = fig.add_axes([0.81, axpos.y0, 0.01, axpos.height])
+    cbar_ax = figure.add_axes([0.81, axpos.y0, 0.01, axpos.height])
 
-    cbar = fig.colorbar(contf, cax=cbar_ax)
+    cbar = figure.colorbar(contf, cax=cbar_ax)
     cbar.ax.tick_params(labelsize=16)
     cbar.set_label(label=r'$T [\mathrm{^\circ C}]$', size=18)
 
-    ani = animation.ArtistAnimation(fig, frames, interval=100)
+    ani = animation.ArtistAnimation(figure, frames, interval=25)
 
     return ani
 #
@@ -156,13 +154,13 @@ def init_temp() -> np.ndarray:
 #
 
 
-def make_mat(str: str) -> np.ndarray:
+def make_mat(str_xy: str) -> np.ndarray:
     """
     Ax=b の行列 A をつくる
 
     Parameters
     -----
-    str : str
+    str_xy : str
         'x' or 'y'
 
     Returns
@@ -173,9 +171,9 @@ def make_mat(str: str) -> np.ndarray:
     """
 
     size_mat: int = int()
-    if str == 'x':
+    if str_xy == 'x':
         size_mat = SIZE_MAT_X
-    elif str == 'y':
+    elif str_xy == 'y':
         size_mat = SIZE_MAT_Y
     #
 
@@ -193,7 +191,7 @@ def make_mat(str: str) -> np.ndarray:
 #
 
 
-def make_banded(mat: np.ndarray, str: str) -> np.ndarray:
+def make_banded(mat: np.ndarray, str_xy: str) -> np.ndarray:
     """
     Ax=b の行列 A を the diagonal banded form に変換する
 
@@ -201,7 +199,7 @@ def make_banded(mat: np.ndarray, str: str) -> np.ndarray:
     -----
     mat : ndarray
         Ax=b の行列 A
-    str : str
+    str_xy : str
         'x' or 'y'
 
     Returns
@@ -212,9 +210,9 @@ def make_banded(mat: np.ndarray, str: str) -> np.ndarray:
     """
 
     size_mat: int = int()
-    if str == 'x':
+    if str_xy == 'x':
         size_mat = SIZE_MAT_X
-    elif str == 'y':
+    elif str_xy == 'y':
         size_mat = SIZE_MAT_Y
     #
 
@@ -292,7 +290,7 @@ def main_loop(temp: np.ndarray,
 
 
 def wrapper_adi(temp: np.ndarray,
-                mat_banded: np.ndarray, str: str) -> np.ndarray:
+                mat_banded: np.ndarray, str_xy: str) -> np.ndarray:
     """
     ADI 法の時間 0.5 ステップ分
 
@@ -302,7 +300,7 @@ def wrapper_adi(temp: np.ndarray,
         格子点の温度 (初期値) を保存しておく配列
     mat_banded_x : ndarray
         Ax=b の行列 A の the diagonal banded form
-    str : str
+    str_xy : str
         'x' or 'y'
 
     Returns
@@ -314,10 +312,10 @@ def wrapper_adi(temp: np.ndarray,
 
     num_sol: int = int()
     num_grid: int = int()
-    if str == 'x':
+    if str_xy == 'x':
         num_sol = SIZE_MAT_X
         num_grid = NUM_Y
-    elif str == 'y':
+    elif str_xy == 'y':
         num_sol = SIZE_MAT_Y
         num_grid = NUM_X
     #
@@ -326,11 +324,11 @@ def wrapper_adi(temp: np.ndarray,
         = np.array([np.full(num_sol+2, math.nan), ] * 3)
 
     for i_grid in range(1, num_grid-1):
-        if str == 'x':
+        if str_xy == 'x':
             temp_explicit[0] = temp[i_grid-1, :]
             temp_explicit[1] = temp[i_grid, :]
             temp_explicit[2] = temp[i_grid+1, :]
-        elif str == 'y':
+        elif str_xy == 'y':
             temp_explicit[0] = temp[:, i_grid-1]
             temp_explicit[1] = temp[:, i_grid]
             temp_explicit[2] = temp[:, i_grid+1]
@@ -338,10 +336,10 @@ def wrapper_adi(temp: np.ndarray,
 
         vec = make_vec(temp_explicit, num_sol)
 
-        if str == 'x':
+        if str_xy == 'x':
             temp[i_grid, 1:-1] \
                 = solve_banded((1, 1), mat_banded, vec)
-        elif str == 'y':
+        elif str_xy == 'y':
             temp[1:-1, i_grid] \
                 = solve_banded((1, 1), mat_banded, vec)
         #
@@ -351,6 +349,7 @@ def wrapper_adi(temp: np.ndarray,
 #
 
 
+@njit
 def make_vec(temp: np.ndarray, size_vec: int) -> np.ndarray:
     """
     Ax=b のベクトル b をつくる
@@ -457,15 +456,15 @@ if __name__ == '__main__':
     matrix_banded_x: np.ndarray = make_banded(matrix_x, 'x')
     matrix_banded_y: np.ndarray = make_banded(matrix_y, 'y')
 
-    fig, axis = plt.subplots()
-    frames: list = []
-    fig_bundle: tuple = (fig, axis, frames)
+    fig, ax = plt.subplots()
+    frame_list: list = []
+    bundle: tuple = (fig, ax, frame_list)
 
-    fig_bundle, contf = main_loop(
-        temperature, matrix_banded_x, matrix_banded_y, fig_bundle)
-    ani = make_animation(fig_bundle, contf)
+    bundle, contour = main_loop(
+        temperature, matrix_banded_x, matrix_banded_y, bundle)
+    anim = make_animation(bundle, contour)
 
-    ani.save('ani.mp4', writer="ffmpeg", dpi=300)
+    anim.save('ani.mp4', writer="ffmpeg", dpi=300)
 
     TIME_ELAPSED: float = perf_counter() - TIME_INIT
     print(f'{__name__}: {TIME_ELAPSED:.5f} s')
