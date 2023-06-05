@@ -98,7 +98,7 @@ def plot_temp(temp: np.ndarray):
 
     Parameters
     -----
-    temp : np.ndarray
+    temp : ndarray
         格子点の温度を保存しておく配列
 
     Return
@@ -164,7 +164,7 @@ def init_temp() -> tuple[np.ndarray, np.ndarray]:
 
     """
 
-    temp: np.ndarray = np.full((NUM_ROW, NUM_COL), math.inf)
+    temp: np.ndarray = np.full((NUM_ROW, NUM_COL), math.nan)
     grid: np.ndarray = np.full((NUM_ROW, NUM_COL), False)
 
     t_init: float = range_temp()[2]
@@ -252,7 +252,7 @@ def range_temp() -> tuple[float, float, float]:
 #
 
 
-def main_loop(temp, grid):
+def main_loop(temp: np.ndarray, grid: np.ndarray):
     """
     Gauss-Seidel 法の反復を行う
 
