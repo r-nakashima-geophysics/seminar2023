@@ -2,6 +2,11 @@
 Chapra & Canale (2015) Example 30.2
 
 1 次元の熱伝導方程式を simple 陰解法で解く.
+Dirichlet 境界条件.
+
+Notes
+-----
+コマンドライン引数以外のパラメータは以下に記述されている.
 
 """
 
@@ -16,6 +21,9 @@ from scipy.linalg import solve_banded
 # 境界条件
 T_LEFT: Final[float] = 100
 T_RIGHT: Final[float] = 50
+
+# 一様な初期条件
+T_INIT: Final[float] = 0
 
 # 熱伝導率
 KAPPA: Final[float] = 0.835
@@ -103,31 +111,6 @@ def make_banded(mat: np.ndarray) -> np.ndarray:
 #
 
 
-def make_vec(temp: np.ndarray) -> np.ndarray:
-    """
-    Ax=b のベクトル b をつくる
-
-    Parameters
-    -----
-    temp : ndarray
-        ある時刻での格子点の温度を保存しておく配列
-
-    Returns
-    -----
-    vec : np.ndarray
-        Ax=b のベクトル b
-
-    """
-
-    vec: np.ndarray = temp
-
-    vec[0] += LAMBDA * T_LEFT
-    vec[-1] += LAMBDA * T_RIGHT
-
-    return vec
-#
-
-
 def integrate_time(mat_banded: np.ndarray) -> np.ndarray:
     """
     simple 陰解法で熱伝導方程式を時間積分する
@@ -144,7 +127,7 @@ def integrate_time(mat_banded: np.ndarray) -> np.ndarray:
 
     """
 
-    temp: np.ndarray = np.zeros_like(LIN_X)
+    temp: np.ndarray = np.full_like(LIN_X, T_INIT)
     temp[0] = T_LEFT
     temp[-1] = T_RIGHT
 
@@ -153,11 +136,36 @@ def integrate_time(mat_banded: np.ndarray) -> np.ndarray:
     vec: np.ndarray
     for i_time in range(NUM_TIME):
         temp_all[i_time, :] = temp
-        vec = make_vec(temp[1:-1])
+        vec = make_vec(temp)
         temp[1:-1] = solve_banded((1, 1), mat_banded, vec)
     #
 
     return temp_all
+#
+
+
+def make_vec(temp: np.ndarray) -> np.ndarray:
+    """
+    Ax=b のベクトル b をつくる
+
+    Parameters
+    -----
+    temp : ndarray
+        ある時刻での格子点の温度を保存しておく配列
+
+    Returns
+    -----
+    vec : ndarray
+        Ax=b のベクトル b
+
+    """
+
+    vec: np.ndarray = temp[1:-1]
+
+    vec[0] += LAMBDA * temp[0]
+    vec[-1] += LAMBDA * temp[-1]
+
+    return vec
 #
 
 
