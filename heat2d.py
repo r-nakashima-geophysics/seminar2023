@@ -10,6 +10,7 @@ Notes
 
 """
 
+import copy
 import math
 from time import perf_counter
 from typing import Final
@@ -17,7 +18,6 @@ from typing import Final
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
-from numba import njit
 from scipy.linalg import solve_banded
 
 # ========== パラメータ ==========
@@ -49,8 +49,10 @@ LEFT: Final[float] = 0
 
 # ========== パラメータ [ここまで] ==========
 
-LAMBDA: Final[float] \
-    = 2 * KAPPA * DELTA_TIME / ((DELTA_X**2)+(DELTA_Y**2))
+LAMBDA_X: Final[float] \
+    = 2 * KAPPA * DELTA_TIME / (DELTA_X**2)
+LAMBDA_Y: Final[float] \
+    = 2 * KAPPA * DELTA_TIME / (DELTA_Y**2)
 
 NUM_TIME: Final[int] = 1 + int(END_TIME/DELTA_TIME)
 LIN_TIME: Final[np.ndarray] = np.linspace(0, END_TIME, NUM_TIME)
@@ -171,20 +173,23 @@ def make_mat(str_xy: str) -> np.ndarray:
     """
 
     size_mat: int = int()
+    lambda_implicit: float = float()
     if str_xy == 'x':
         size_mat = SIZE_MAT_X
+        lambda_implicit = LAMBDA_X
     elif str_xy == 'y':
         size_mat = SIZE_MAT_Y
+        lambda_implicit = LAMBDA_Y
     #
 
     mat: np.ndarray = np.zeros((size_mat, size_mat))
 
     for i_diag in range(size_mat):
-        mat[i_diag, i_diag] = 2 * (1+LAMBDA)
+        mat[i_diag, i_diag] = 2 * (1+lambda_implicit)
     #
     for i_diag in range(size_mat-1):
-        mat[i_diag, i_diag+1] = -LAMBDA
-        mat[i_diag+1, i_diag] = -LAMBDA
+        mat[i_diag, i_diag+1] = -lambda_implicit
+        mat[i_diag+1, i_diag] = -lambda_implicit
     #
 
     return mat
@@ -305,7 +310,7 @@ def wrapper_adi(temp: np.ndarray,
 
     Returns
     -----
-    temp : ndarray
+    temp_new : ndarray
         格子点の温度 (収束した値) を保存しておく配列
 
     """
@@ -319,7 +324,7 @@ def wrapper_adi(temp: np.ndarray,
         num_sol = SIZE_MAT_Y
         num_grid = NUM_X
     #
-
+    temp_new = copy.copy(temp)
     temp_explicit: np.ndarray \
         = np.array([np.full(num_sol+2, math.nan), ] * 3)
 
@@ -334,23 +339,23 @@ def wrapper_adi(temp: np.ndarray,
             temp_explicit[2] = temp[:, i_grid+1]
         #
 
-        vec = make_vec(temp_explicit, num_sol)
+        vec = make_vec(temp_explicit, num_sol, str_xy)
 
         if str_xy == 'x':
-            temp[i_grid, 1:-1] \
+            temp_new[i_grid, 1:-1] \
                 = solve_banded((1, 1), mat_banded, vec)
         elif str_xy == 'y':
-            temp[1:-1, i_grid] \
+            temp_new[1:-1, i_grid] \
                 = solve_banded((1, 1), mat_banded, vec)
         #
     #
 
-    return temp
+    return temp_new
 #
 
 
-@njit
-def make_vec(temp: np.ndarray, size_vec: int) -> np.ndarray:
+def make_vec(temp: np.ndarray, size_vec: int, str_xy: str) \
+        -> np.ndarray:
     """
     Ax=b のベクトル b をつくる
 
@@ -360,6 +365,8 @@ def make_vec(temp: np.ndarray, size_vec: int) -> np.ndarray:
         ある時刻での格子点の温度を保存しておく配列
     size_vec : int
          Ax=b のベクトル b のサイズ
+    str_xy : str
+        'x' or 'y'
 
     Returns
     -----
@@ -368,16 +375,26 @@ def make_vec(temp: np.ndarray, size_vec: int) -> np.ndarray:
 
     """
 
+    lambda_explicit: float = float()
+    lambda_implicit: float = float()
+    if str_xy == 'x':
+        lambda_explicit = LAMBDA_Y
+        lambda_implicit = LAMBDA_X
+    elif str_xy == 'y':
+        lambda_explicit = LAMBDA_X
+        lambda_implicit = LAMBDA_Y
+    #
+
     vec: np.ndarray = np.zeros(size_vec)
 
     for i_col in range(size_vec):
-        vec[i_col] = LAMBDA*temp[0][i_col+1] \
-            + 2*(1-LAMBDA)*temp[1][i_col+1] \
-            + LAMBDA*temp[2][i_col+1]
+        vec[i_col] = lambda_explicit*temp[0][i_col+1] \
+            + 2*(1-lambda_explicit)*temp[1][i_col+1] \
+            + lambda_explicit*temp[2][i_col+1]
     #
 
-    vec[0] += LAMBDA * temp[1][0]
-    vec[-1] += LAMBDA * temp[1][-1]
+    vec[0] += lambda_implicit * temp[1][0]
+    vec[-1] += lambda_implicit * temp[1][-1]
 
     return vec
 #
